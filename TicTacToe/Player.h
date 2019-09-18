@@ -8,9 +8,10 @@
 #include "Room.h"
 #include <algorithm>
 #include "SumaDeVida.h"
+#include <string>
 #include <map>
 
-using std::map; using std::pair; using std::cout;
+using std::map; using std::pair; using std::cout; using std::to_string;
 
 class Player
 {
@@ -52,7 +53,7 @@ public:
 	//Acciones del jugador
 	void openDoor(map<int, Room>, int, int, HWND hWnd);
 	int choice;
-	void unlockDoor(map<int, Room>&, int, int);
+	void unlockDoor(map<int, Room>&, int, int, HWND);
 	void openInventory();
 
 	//levantar objetos============================================
@@ -69,32 +70,32 @@ public:
 
 
 	//Pelear con enemigos=========================================
-	void fightingMinions(map<int, Room>&, int);
+	void fightingMinions(map<int, Room>&, int, HWND);
 	void fightingBosses(map<int, Room>&, int);
 	void fightingFinalBoss(map<int, Room>&, int);
 
 
-	void heal();
-	void openStats();
-	void revealCurrentRoom(map<int, Room>&, int);
+	void heal(HWND, HWND);
+	string openStats(HWND);
+	void revealCurrentRoom(map<int, Room>&, int, HWND);
 
 	template <class V>
 	V damageInFight(V const& t1, V const& t2);
 
 	bool gameIsActive = true;
 
-
-
-
 	/*========================================================
 	  ========================Crafting========================
 	  ========================================================*/
 
-	void crafting();
-	void recipeBook();
-	void diccionario(string);
-	void particionDeString(map<int, vector<string>>, string);
-	void switchForWeapons(int);
+	string crafting(HWND, HWND);
+	void recipeBook(HWND);
+	void diccionario(string, HWND, HWND);
+	void particionDeString(map<int, vector<string>>, string, HWND);
+	void switchForWeapons(int, HWND);
+
+	Sword* dragonsTeeth(HWND);
+
 private:
 	int currentRoom = 0, previousRoom, damage, defense, currentHealth, maximumHealth;
 };
@@ -105,4 +106,12 @@ V Player::damageInFight(V const & t1, V const & t2)
 	V value;
 	value = t1 - t2;
 	return value;
+}
+
+inline char stringToMessageBox(string thisString, HWND hWnd) {
+	char buff[200];
+	sprintf_s(buff, "%s", thisString.c_str());
+	MessageBoxA(hWnd, buff, "Mensaje", MB_OK); 
+	return buff[200];
+
 }

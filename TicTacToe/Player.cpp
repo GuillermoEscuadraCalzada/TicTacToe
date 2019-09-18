@@ -89,16 +89,13 @@ void Player::openDoor(map<int, Room> roomMap, int playerPos, int doorNumber, HWN
 			if (doorNumber == door.getID()) {
 
 				if (door.getStatus() == false) {
-					char textReaded[] = "Puerat bloqueada.";
-					int length = GetWindowTextLength(TextBox) + 1;
-					TextBox = CreateWindowA("EDIT", "", WS_BORDER | WS_CHILD | WS_VISIBLE, 10, 10, 400, 20, hWnd, NULL, NULL, NULL);
-					GetWindowTextA(TextBox, textReaded, length);
+					MessageBoxA(hWnd, "Puerta cerrada.", "Investigando puertas", MB_OK);
 					
 				}
 				else if (door.getStatus() == true) {
-					char textReaded[] = "Puerta desbloqueada, ahora te encuentras en la habitacion";
-
-				cout << "Puerta abierta, ahora te encuentras en el cuarto: " << door.getID() << "\n\n";
+					
+					string status = "Puerta abierta, ahora te encuentras en el cuarto: " + to_string(door.getID());
+					stringToMessageBox(status, hWnd);
 					setCurrentRoom(door.getID());
 				}
 
@@ -115,36 +112,39 @@ void Player::openDoor(map<int, Room> roomMap, int playerPos, int doorNumber, HWN
 en caso de que no haya ninguna llave con el ID, marcará error y se lo dirá al jugador.
 		@param contenedor de cuartos, posición del jugador en el contenedor, numero que el jugador ingresa.
 		@return puerta desbloqueada o notificacion de que no se tiene una llave que la abra.*/
-void Player::unlockDoor(map<int, Room> &roomMap, int playerPos, int doorNumber) {
-	vector <Key> ::iterator _iterator = newKeyVector.begin();
-	forward_list<Door> ::iterator _doorIterator = roomMap.at(playerPos).doorList.begin();
+void Player::unlockDoor(map<int, Room>& roomMap, int playerPos, int doorNumber, HWND hWnd) {
+	
+	
+	string doorNumberr;
+	for (forward_list<Door> ::iterator _doorIterator = roomMap.at(playerPos).doorList.begin(); _doorIterator != roomMap.at(playerPos).doorList.end(); _doorIterator++) {
 
-	printf("Elige la puerta que quieras desbloquear:\n");
-	for (_doorIterator; _doorIterator != roomMap.at(playerPos).doorList.end(); _doorIterator++) {
 		if (doorNumber == _doorIterator->getID() || _doorIterator->getStatus() == false) {
-			cout << "Puerta numero:\t" << _doorIterator->getID() << "\n";
-			if (newKeyVector.size() > 0) {
 
-				for (_iterator; _iterator != newKeyVector.end(); _iterator++) {
+			doorNumberr = "Puerta numero: " + to_string(_doorIterator->getID());
+			stringToMessageBox(doorNumberr, hWnd);
+
+			if (newKeyVector.size() > 0) {
+				for (vector <Key> ::iterator _iterator = newKeyVector.begin(); _iterator != newKeyVector.end(); _iterator++) {
 					if (_iterator->getAtribute() == _doorIterator->getID()) {
 						_doorIterator->setStatus(true);
-						cout << "Puerta abierta, puedes pasar en cualquier momento por ahi.\n\n";
+						stringToMessageBox("Puerta abierta, puedes pasar en cualquier momento por ahi.", hWnd);
 						try {
 							//keyVector.erase(remove(keyVector.begin(), keyVector.end(), _iterator));
 						}
 						catch (std::exception& e) {
-							cout << "Exception caught: " << e.what() << "\n";
+							stringToMessageBox(e.what(), hWnd);
 						}
 
 						break;
 
 					}
-					else cout << "Ninguna llave en tu poder puede abrir alguna de estas puertas.\n\n";
+					else
+						stringToMessageBox("Ninguna llave en tu poder puede abrir alguna de estas puertas.\n\n", hWnd);
 				}
 			}
-			else printf("No tienes ninguna llave.\n\n");
+			else stringToMessageBox("No tienes ninguna llave.", hWnd);
 		}
-		else cout << "La puerta numero: " << _doorIterator->getID() << " ya estaba desabloqueada. No se puede desbloquear.\n\n";
+	
 	}
 
 
@@ -154,26 +154,34 @@ void Player::unlockDoor(map<int, Room> &roomMap, int playerPos, int doorNumber) 
 /* Para que el jugador se pueda curar, se recorre el arreglo de vectores de pociones. Si hay al menos una, se le muestran al jugador su nombre y los puntos que cura. Al momento
 que elige el jugador que pocion usar, se revisa la vida actual del jugador, si es menor a la vida maxima, se cura lo que de la poción. Si la poción lo cura más allá de la
 vida máxima, la vida actual no sobrepasa ese limite. Si la vida actual ya es igual a la vida máxima, no se puede curar */
-void Player::heal() {
-
-	vector<HealthPotion> ::iterator _iterator = potionVector.begin();
+void Player::heal(HWND hWnd, HWND textBox) {
+	string items;
+	
 	if (potionVector.size() > 0) {
+		stringToMessageBox("Tienes las siguientes pociones en tu inventario.", hWnd);
+		vector<HealthPotion> ::iterator _iterator = potionVector.begin();
+		std::advance(_iterator, 1);
+		items = _iterator->getName() + " puntos que cura: " + to_string(_iterator->getAtribute());
+		stringToMessageBox(items, hWnd);
+		_iterator++;
 
-		printf("\nTienes las siguientes pociones en tu inventario:\n");
-		for (_iterator; _iterator != potionVector.end(); _iterator++)
-			cout << _iterator->getName() << " puntos que cura: " << _iterator->getAtribute() << "\n";
+		/*for (vector<HealthPotion> ::iterator _iterator = potionVector.begin(); _iterator != potionVector.end(); _iterator++) {
+			items = _iterator->getName() + " puntos que cura: " + to_string(_iterator->getAtribute());
+			stringToMessageBox(items, hWnd);
 
-		printf("\nElige la pocion con la que quieras curarte.\n");
-		string str;
-		std::cin.clear();
-		std::getline(std::cin, str);
+		}*/
+
+		stringToMessageBox("Elige la pocion con la que quieras curarte.", hWnd);
+		char textReaded[20];
+		int length = GetWindowTextLength(textBox) + 1;
+		GetWindowTextA(textBox, textReaded, length);
 
 		for (HealthPotion healthP : potionVector) {
 
-			if (str == healthP.getName()) {
+			if (textReaded == healthP.getName()) {
 				obteniendoDatos(getCurrentHealth(), healthP.getAtribute());
 				if (sumandoDatos() < getMaximumHealth()) {
-					printf("\nCuracion realizada\n");
+					stringToMessageBox("Curacion realizada.", hWnd);
 					setCurrentHealth(sumandoDatos());
 
 					potionVector.erase(remove(potionVector.begin(), potionVector.end(), healthP));
@@ -182,8 +190,7 @@ void Player::heal() {
 				}
 
 				else if (currentHealth == getMaximumHealth()) {
-					printf("No puedes curarte ms de esto.\n\n");
-
+					stringToMessageBox("No puedes curarte ms de esto.", hWnd);
 				}
 
 				else if (sumandoDatos() > getMaximumHealth()) {
@@ -205,62 +212,79 @@ void Player::heal() {
 }
 
 /*A partir de todo lo que haga el jugador, curarse, tomar armas y escudo, etc. Se desplegara toda la información.*/
-void Player::openStats() {
-	printf("\nEstas son tus siguientes estadisticas:\n");
-	cout << "Vida Actual: " << getCurrentHealth() << "/" << getMaximumHealth() << "\nDano actual: " << getDamage() << "\nDefensa actual: " << getDefense()
-		<< "\nCuarto Actual: " << getCurrentRoom() << "\n\n";
+string Player::openStats(HWND hWnd) {
+	stringToMessageBox("Estas son tus siguientes estadisticas:", hWnd);
+	string stats = "Vida Actual: " + to_string(getCurrentHealth()) + "/" + to_string(getMaximumHealth()) +  "\nDano actual: " + to_string(getDamage()) + "\nDefensa actual: " + to_string(getDefense())
+		+ "\nCuarto Actual: " + to_string(getCurrentRoom());
+	stringToMessageBox(stats, hWnd);
+	return stats;
 }
 
 
 /*	Se recorrerán los elementos de cada contenedor y mostrará su información en caso de que el tamaño de dichos contenedores sea mayor a cero.
 	@param el contenedor de los cuartos, pocisión del jugador.
 	@return los elementos de cada contenedor dentro de los cuartos. */
-void Player::revealCurrentRoom(map<int, Room>& roomMap, int playerPos) {
+void Player::revealCurrentRoom(map<int, Room>& roomMap, int playerPos, HWND hWnd) {
 
-	printf("Puertas disponibles:\n");
-
+	stringToMessageBox("Puertas disponibles:", hWnd);
+	string datos;
 	for (Door &a : roomMap.at(playerPos).doorList) {
-		cout << "Puerta Numero: " << (int&)a << " ";
 		if (a.getStatus() == false) {
-			cout << "Cerrado.\n";
+			datos = "Puerta Numero: " + to_string((int&)a) + " Cerrado";
+
+			stringToMessageBox(datos, hWnd);
+
 		}
-		else cout << "Abierto\n";
+		else {
+			datos = "Puerta Numero: " + to_string((int&)a) + " Abierto";
+			stringToMessageBox(datos, hWnd);
+		}
+	
 	}
 
 	if (roomMap.at(playerPos).enemyVector.size() > 0) {
-		printf("\nEnemigos en la habitacion:\n");
+		stringToMessageBox("Enemigos en la habitacion", hWnd);
 		for (Enemy *a : roomMap.at(playerPos).enemyVector) {
-			cout << "Nombre del Enemigo: " << a->getEnemyName()
-				<< "\nVida del enemigo: " << a->getEnemyHealth()
-				<< "\nFuerza del enemigo: " << a->getEnemyStrength()
-				<< "\nDefensa del enemigo: " << a->getEnemyDefense() << "\n\n";
+			datos = "Nombre del Enemigo: " + a->getEnemyName() + "Vida del enemigo: " +  to_string(a->getEnemyHealth()) + "\nFuerza del enemigo: " 
+				+ to_string(a->getEnemyStrength()) + "\nDefensa del enemigo: " + to_string(a->getEnemyDefense());
+			stringToMessageBox(datos, hWnd);
 
 		}
 	}
-	else printf("No hay enemigos en esta habitacion.\n");
+	else stringToMessageBox("No hay enemigos en esta habitacion.", hWnd);
+
 
 
 	if (roomMap.at(playerPos).itemsVector.size() > 0) {
-		printf("Objetos disponibles:\n");
+		stringToMessageBox("Objetos disponibles.", hWnd);
+		
 		for (Items* a : roomMap.at(playerPos).itemsVector) {
-			cout << "Nombre del objeto: " << a->getName()
-				<< "\nValor del objeto: " << a->getAtribute() << "\n\n";
+			datos = "Nombre del objeto: " + a->getName() + "\nValor del objeto: " + to_string(a->getAtribute());
+			stringToMessageBox(datos, hWnd);
+
 		}
 	}
-	else printf("No hay objetos en esta habitacion.\n");
+	else stringToMessageBox("No hay objetos en esta habitacion.", hWnd);
+	
 }
 
-void Player::crafting()
+/*======================================================================================================================
+  =====================================================Crafteo==========================================================
+  ======================================================================================================================*/
+
+string Player::crafting(HWND hWnd, HWND textBox)
 {
-	string opcion;
-	printf("Elige el nombre del arma que quieras craftear:\n");
-	recipeBook();
-	std::getline(std::cin, opcion);
+	stringToMessageBox("Elige el nombre del arma que quieras craftear", hWnd);
+	recipeBook(hWnd);
+	char textReaded[20];
+	int length = GetWindowTextLength(textBox) + 1;
+	GetWindowTextA(TextBox, textReaded, length);
 
-	diccionario(opcion);
+	diccionario(textReaded, textBox, hWnd);
+	return textReaded;
 }
 
-void Player::recipeBook()
+void Player::recipeBook(HWND hWnd)
 {
 	std::forward_list<string> recetario = {
 		"diente de dragon: Espada de madera + Espada de diamante.",
@@ -268,13 +292,13 @@ void Player::recipeBook()
 		"escudo de papel: Escudo de diamantina + escudo de madera."
 	};
 	for (std::forward_list<string>::iterator it = recetario.begin(); it != recetario.end(); it++) {
-		cout << *it << "\n";
-	}printf("\n");
+		stringToMessageBox(*it, hWnd);
+	}
 
 
 }
 
-void Player::diccionario(string sentence)
+void Player::diccionario(string sentence, HWND textBox, HWND hWnd)
 {
 
 	map<int, vector<string>> diccionario{
@@ -283,28 +307,26 @@ void Player::diccionario(string sentence)
 		{2,{"escudo de papel"}}
 	};
 
+	char textReaded[20];
+	int length = GetWindowTextLength(textBox) + 1;
+	GetWindowTextA(textBox, textReaded, length);
 
-
-	particionDeString(diccionario, sentence);
+	particionDeString(diccionario, sentence, hWnd);
 
 }
 
-void Player::particionDeString(map<int, vector<string>> search, string sentence) {
+void Player::particionDeString(map<int, vector<string>> search, string sentence, HWND hWnd) {
 	std::for_each(sentence.begin(), sentence.end(), [](char& c) {
 		c = ::tolower(c);
-		});
+	});
 
 	int numero = 0;
-
-
 	for (map< int, vector<string>> ::iterator _firstMapIterator = search.begin(); _firstMapIterator != search.end(); _firstMapIterator++) {
-
 		for (vector<string> ::iterator it = _firstMapIterator->second.begin(); it != _firstMapIterator->second.end(); it++) {
-
 			if (sentence == *it) {
-				cout << sentence << "\n";
+				stringToMessageBox(sentence, hWnd);
 				numero = (int)_firstMapIterator->first;
-				switchForWeapons(numero);
+				switchForWeapons(numero, hWnd);
 			}
 		}
 	}
@@ -312,47 +334,47 @@ void Player::particionDeString(map<int, vector<string>> search, string sentence)
 
 }
 
-void Player::switchForWeapons(int number)
+void Player::switchForWeapons(int number, HWND hWnd)
 {
 	switch (number)
 	{
 	case 0:
-
-		for (Items sword : itemsVector) {
-			Items* thisSword = &sword;
-			if (thisSword == static_cast<Sword*>(thisSword)) {
-				if (thisSword->getName() == "Espada de diamante") {
-					printf("Segunda espada conseguida.\n");
-					itemsVector.erase(remove(itemsVector.begin(), itemsVector.end(), sword));
-
-
-				}
-				else if (thisSword->getName() == "Espada de madera") {
-					printf("Primer espada conseguida.\n");
-
-					itemsVector.erase(remove(itemsVector.begin(), itemsVector.end(), sword));
-
-				}
-			}
-		}
-
-		/*for (Items sword : itemsVector) {
-			Items* thisSword = &sword;
-			if (thisSword == static_cast<Sword*>(thisSword)) {
-
-				if (thisSword->getName() == "Espada de diamante") {
-					printf("Segunda espada conseguida.\n");
-					itemsVector.erase(remove(itemsVector.begin(), itemsVector.end(), sword));
-				}
-			}
-		}*/
-
-		openInventory();
+		dragonsTeeth(hWnd);
 		break;
 	}
 }
 
+/*======================================================================================================================
+  =====================================================Creacion de armas================================================
+  ======================================================================================================================*/
 
+Sword * Player::dragonsTeeth(HWND hWnd)
+{
+	bool firstSword = false;
+	bool secondSword = false;
+	for (Items sword : itemsVector) {
+		Items* thisSword = &sword;
+		if (thisSword == static_cast<Sword*>(thisSword)) {
+			if (thisSword->getName() == "Espada de diamante") {
+				stringToMessageBox("Segunda espada conseguida.", hWnd);
+				firstSword = true;
+			}
+			else if (thisSword->getName() == "Espada de madera") {
+				stringToMessageBox("Primer espada conseguida.", hWnd);
+				secondSword = true;
+			}
+		}
+	}
+	if (secondSword == true || firstSword == true) {
+		Sword* dragonTeeth = new Sword("Diente de dragon", 20);
+		itemsVector.clear();
+		Items items = *dragonTeeth;
+		itemsVector.push_back(items);
+		return dragonTeeth;
+	}
+	else
+		return 0;
+}
 
 
 /*=================================================================================================================
@@ -669,58 +691,67 @@ void Player::openInventory() {
 	Se recorre el arreglo de los enemigos y luego busca si cada uno tiene mayo vida a 0. Después entra en un while en el que se revisa el daño del jugador y el daño del enemigo, se hace una resta y se quitan puntos de vida.
 	Posteriormente entra en un while de defensa, en el cual el enemigo ataca al jugador. El ciclo se repite hasta que el enemigo de cada indice sea igual o menor a cero. Al morir, va al siguiente enemigo.
 	Si el jugador muere regresa al cuarto anterior.*/
-void Player::fightingMinions(map<int, Room>& roomMap, int playerPos) {
+void Player::fightingMinions(map<int, Room>& roomMap, int playerPos, HWND hWnd) {
 	bool fighting, defense;
 	if (roomMap.at(playerPos).enemyVector.size() > 0) {
+		MessageBoxA(hWnd, "El/Los enemigo/s dentro de esta habitacion es/son peligrosos, ten cuidado a pesar de que pueden ser faciles de matar, puede ser dificil de pelear con ellos.", "Peleando", MB_OK);
 		for (Enemy* minion : roomMap.at(playerPos).enemyVector)
 
 			if (minion = dynamic_cast<Minion*>(minion)) {
-				printf("El/Los enemigo/s dentro de esta habitacion es/son peligrosos, ten cuidado a pesar de que pueden ser faciles de matar, puede ser dificil de pelear con ellos.\n\n");
+
+		
 
 				if (minion->getEnemyHealth() > 0) {
 					fighting = true;
+					char buff[200] = "";
+					string name = "Preparate para luchar! Empiezas tu atacando. El enemigo: " + minion->getEnemyName() + " se defiende de tu ataque con " 
+									   + std::to_string(minion->getEnemyDefense()) + " puntos de defensa. Por lo tanto, recibe: " + std::to_string(damageInFight(getDamage(), minion->getEnemyDefense()))
+									   + " puntos de dano.\n";
 					while (fighting) {
 
-						cout << "Preparate para luchar! Empiezas tu atacando.\n"
-							<< "El enemigo: " << minion->getEnemyName() << " se defiende de tu ataque con " << minion->getEnemyDefense() << " puntos de defensa. Por lo tanto, recibe: "
-							<< damageInFight(minion->getEnemyDefense(), getDamage()) << " puntos de dano.\n";
+						stringToMessageBox(name, hWnd);
 
 						if (damageInFight(getDamage(), minion->getEnemyDefense()) == 0) minion->setMinionHealth(minion->getEnemyHealth());
 						else minion->setMinionHealth(damageInFight(minion->getEnemyDefense(), getDamage()));
 
-						cout << "Vida restante del enemigo: " << minion->getEnemyHealth() << "\n\n";
+						name = "Vida restante del enemigo: " + std::to_string(minion->getEnemyHealth());
+						stringToMessageBox(name, hWnd);
+						defense = true;
 
 						if (minion->getEnemyHealth() <= 0) {
 							fighting = false;
-							roomMap.at(playerPos).enemyVector.erase(remove(roomMap.at(playerPos).enemyVector.begin(), roomMap.at(playerPos).enemyVector.end(), minion));
-							roomMap.at(playerPos).enemyVector.shrink_to_fit();
-							printf("Enemigo asesinado!\n\n");
-						} defense = true;
+							MessageBoxA(hWnd, "Enemigo asesinado!\n\n", "Sin enemigos", MB_OK); defense = false;
+						} 
 
-						printf("Preparate para defenderte.! El enemigo empieza atacando.\n");
+
 
 						while (defense) {
-							cout << "El enemigo: " << minion->getEnemyName() << " ataca con: " << minion->getEnemyStrength() << " puntos de ataque. Por lo tanto, recibes: "
-								<< damageInFight(getDefense(), minion->getEnemyStrength()) << " puntos de dano.\n";
+							MessageBoxA(hWnd, "Preparate para defenderte.! El enemigo empieza atacando.", "Defiendete", MB_OK);
+							name = "El enemigo: " +  minion->getEnemyName() + " ataca con: " +  std::to_string(minion->getEnemyStrength()) +  " puntos de ataque. Por lo tanto, recibes: "
+								+  to_string(damageInFight(getDefense(), minion->getEnemyStrength())) + " puntos de dano.\n";
+							stringToMessageBox(name, hWnd);
+
 
 							if (damageInFight(getDefense(), minion->getEnemyStrength()) == 0) setCurrentHealth(getCurrentHealth());
 							else setCurrentHealth(damageInFight(getDefense(), minion->getEnemyStrength()));
-
-							cout << "Tu vida restante: " << getCurrentHealth() << "\n\n";
+							name = "Tu vida restante: " + to_string(getCurrentHealth());
 
 							if (getCurrentHealth() <= 0) {
-								printf("Has muerto, sera momento de encontrar mejor armadura.\n");
+								MessageBoxA(hWnd, "Has muerto, sera momento de encontrar mejor armadura.", "Sin enemigos", MB_OK); defense = false;
 								setCurrentRoom(getPreviousRoom());
+								fighting = false;
 							} defense = false;
 						}
 
 					}
 				}
-				else printf("Este enemigo esta muerto\n");
+				else
+					MessageBoxA(hWnd, "No hay ningun enemigo vivo", "Sin enemigos", MB_OK); defense = false;
+
 			}
 
 	}
-	else printf("No hay enemigos en esta habitacion.\n");
+	else MessageBoxA(hWnd, "No hay enemigos en esta habitacion.\n", "", MB_OK);
 }
 
 /*

@@ -1,6 +1,3 @@
-// TicTacToe.cpp : Define el punto de entrada de la aplicación.
-//
-
 #include "stdafx.h"
 #include "TicTacToe.h"
 #include <string>
@@ -24,12 +21,13 @@ WCHAR szTitle[MAX_LOADSTRING];                  // Texto de la barra de título
 WCHAR szWindowClass[MAX_LOADSTRING];            // nombre de clase de la ventana principal
 const int CELL_SIZE = 100;
 HICON hIcon1, hIcon2;
-HWND  TextBox;
+HWND  TextBox, History;
 Player player;
+
 char textReaded[20];
 
 using std::map; using std::pair;
-string diccionario(string); void particionDeString(map< string, map<int, string> >, string, vector<string>); void switchActions(int, int);
+string diccionario(string, HWND); void particionDeString(map< string, map<int, string> >, string, vector<string>, HWND); void switchActions(int, int, HWND);
 
 forward_list<Door> doorForwardList; //contenedor de las puertas
 vector<Enemy*> enemyVectors; vector<Items*> itemsVectors;
@@ -38,7 +36,7 @@ vector<Enemy*> enemyVectors; vector<Items*> itemsVectors;
 map<int, Room> roomMap = {
 	{0,
 		Room(doorForwardList = {Door(11,true),
-								Door(5,true)},
+								Door(5,false)},
 			 itemsVectors = { new Sword("Espada de Madera",5) }) },
 	{1,
 		Room(doorForwardList = {Door(4, true),
@@ -173,51 +171,55 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 
 
-string diccionario(string sentence)
+string diccionario(string sentence, HWND hWnd)
 {
-		string busqueda;
-		printf("Que palabra quieres usar?\n");
+	//MessageBoxA(hWnd, "Escribe lo que quieras hacer", "Acciones", MB_OK);
 		//El usuario escribe una palabra, dicha palabra se buscará dentro del mapa	
 
 		//se ingresa una palabra para despues buscarlo en el mapa
-		std::getline(std::cin, busqueda);
 
 		map< string, map<int, string> > dictionaryMap
 		{
-			{"abrir", {pair<int,string>(0,"puerta"),
-						pair<int,string>(1,"inventario"),
-					   pair<int,string>(2,"estadisticas")} },
+		{"abrir", {pair<int,string>(0,"puerta"),
+					pair<int,string>(1,"inventario"),
+				   pair<int,string>(2,"estadisticas")} },
 
-			{"recoger", {pair<int,string>(10,"espada"),
-						 pair<int,string>(11,"escudo"),
-						 pair<int,string>(12,"llave"),
-						 pair<int, string>(13,"pocion")}},
+		{"recoger", {pair<int,string>(10,"espada"),
+					 pair<int,string>(11,"escudo"),
+					 pair<int,string>(12,"llave"),
+					 pair<int, string>(13,"pocion")}},
 
-			{"desbloquear",{pair<int,string>(30,"puerta"),
-							pair<int, string>(31,"cuarto"),
-							pair<int,string>(32,"recamara"),
-							pair<int,string>(33,"habitacion")}},
+		{"desbloquear",{pair<int,string>(30,"puerta"),
+						pair<int, string>(31,"cuarto"),
+						pair<int,string>(32,"recamara"),
+						pair<int,string>(33,"habitacion")}},
 
-			{"revelar", {pair<int,string>(50,"cuarto"),
-						 pair<int,string>(51, "recamara"),
-						 pair<int,string>(52,"habitacion")}},
+		{"quiero",{pair<int,string>(40, "curarme"), pair<int,string>(41,"curar")}},
 
-			{"tirar", {pair<int,string>(60,"espada"),
-					   pair<int,string>(61,"escudo"),
-					   pair<int,string>(62,"llave"),
-					   pair<int,string>(63, "pocion")}} 
+		{"revelar", {pair<int,string>(50,"cuarto"),
+					 pair<int,string>(51, "recamara"),
+					 pair<int,string>(52,"habitacion")}},
+
+		{"tirar", {pair<int,string>(60,"espada"),
+				   pair<int,string>(61,"escudo"),
+				   pair<int,string>(62,"llave"),
+				   pair<int,string>(63, "pocion")}},
+
+		{"crear",{pair<int, string>(70, "objeto")}},
+
+		{"ver",{pair<int,string>(71, "recetario")}}
 		};
 
 		vector<string> vectorForNumbers{
 		"0", "1", "2", "3", "4", "5", "6", "7","8","9","10","11","12","13","14","15","16","17","18","19","20"
 		};
 
-		particionDeString(dictionaryMap, busqueda, vectorForNumbers);
+		particionDeString(dictionaryMap, sentence, vectorForNumbers, hWnd);
 
 	return sentence;
 }
 
-void particionDeString(map<string, map<int, string>> verbMap, string search, vector<string> vectorNumber)
+void particionDeString(map<string, map<int, string>> verbMap, string search, vector<string> vectorNumber, HWND hWnd)
 {
 
 	int numberForSwitch;
@@ -273,7 +275,7 @@ void particionDeString(map<string, map<int, string>> verbMap, string search, vec
 
 							cout << number << "\n\n";
 							try {
-								switchActions(numberForSwitch, number);
+								switchActions(numberForSwitch, number, hWnd);
 
 							}
 							catch (std::bad_alloc& e) {
@@ -287,11 +289,11 @@ void particionDeString(map<string, map<int, string>> verbMap, string search, vec
 			}
 }
 
-void switchActions(int numberForFunction, int numberForDoors)
+void switchActions(int numberForFunction, int numberForDoors, HWND hWnd)
 {
 	switch (numberForFunction) {
 	case 0:
-		player.openDoor(roomMap, player.getCurrentRoom(), numberForDoors, TextBox);
+		player.openDoor(roomMap, player.getCurrentRoom(), numberForDoors, hWnd);
 		break;
 
 
@@ -301,7 +303,7 @@ void switchActions(int numberForFunction, int numberForDoors)
 
 
 	case 2:
-		player.openStats();
+		player.openStats(hWnd);
 		break;
 
 
@@ -326,36 +328,38 @@ void switchActions(int numberForFunction, int numberForDoors)
 
 
 	case 30:
-		player.unlockDoor(roomMap, player.getCurrentRoom(), numberForDoors);
+		player.unlockDoor(roomMap, player.getCurrentRoom(), numberForDoors, hWnd);
 		break;
+
 
 	case 31:
-		player.unlockDoor(roomMap, player.getCurrentRoom(), numberForDoors);
+		player.unlockDoor(roomMap, player.getCurrentRoom(), numberForDoors, hWnd);
 		break;
 
+
 	case 32:
-		player.unlockDoor(roomMap, player.getCurrentRoom(), numberForDoors);
+		player.unlockDoor(roomMap, player.getCurrentRoom(), numberForDoors, hWnd);
 		break;
 
 
 	case 33:
-		player.unlockDoor(roomMap, player.getCurrentRoom(), numberForDoors);
+		player.unlockDoor(roomMap, player.getCurrentRoom(), numberForDoors, hWnd);
 		break;
 
-
-
-	case 41: player.heal();
+		
+	case 40: 
+		player.heal(hWnd, TextBox);
 		break;
 
 	case 50:
-		player.revealCurrentRoom(roomMap, player.getCurrentRoom());
+		player.revealCurrentRoom(roomMap, player.getCurrentRoom(), hWnd);
 		break;
 
-	case 51:player.revealCurrentRoom(roomMap, player.getCurrentRoom());
+	case 51:player.revealCurrentRoom(roomMap, player.getCurrentRoom(), hWnd);
 		break;
 
 
-	case 52: player.revealCurrentRoom(roomMap, player.getCurrentRoom());
+	case 52: player.revealCurrentRoom(roomMap, player.getCurrentRoom(), hWnd);
 		break;
 
 
@@ -375,6 +379,16 @@ void switchActions(int numberForFunction, int numberForDoors)
 
 	case 63:
 		player.dropPotion(roomMap, player.getCurrentRoom());
+		break;
+
+	case 70:
+		player.crafting(TextBox, hWnd);
+		break;
+
+
+	case 71:
+		player.recipeBook(hWnd);
+		break;
 	}
 }
 
@@ -479,17 +493,28 @@ BOOL GetCEellRect(HWND hWnd, int index, RECT* pRect) {
   WM_DESTROY  - publicar un mensaje de salida y volver*/
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	player.setCurrentRoom(0);
+	player.setCurrentHealth(30);
+	player.setMaximumHealth(50);
+	player.setDamage(2);
+	player.itemsVector.push_back(Sword("Espada de diamante", 5));
+	player.itemsVector.push_back(Sword("Espada de madera", 5));
+	player.potionVector.push_back(HealthPotion("Pocion", 5));
 	switch (message)
 	{
-	case WM_CREATE: { //creacion de botones
+	case WM_CREATE: {
+		//creacion de botones
 		hIcon1 = LoadIcon(hInst, MAKEINTRESOURCE(IDI_TICTACTOE));
 		hIcon2 = LoadIcon(hInst, MAKEINTRESOURCE(IDI_SMALL));
 		TextBox = CreateWindowA("EDIT", "", WS_BORDER | WS_CHILD | WS_VISIBLE, 10, 10, 400, 20, hWnd, NULL, NULL, NULL);
+		History = CreateWindowA("STATIC","", WS_BORDER | WS_CHILD | WS_VISIBLE, 800, 10, 200, 500, hWnd, NULL, NULL, NULL);
+		
+
 		CreateWindowA("BUTTON", "OK", WS_VISIBLE | WS_CHILD | WS_BORDER, 420, 10, 70, 20, hWnd, (HMENU)1, NULL, NULL);
+
 		CreateWindowA("BUTTON", "ATACAR Minion", WS_VISIBLE | WS_CHILD | WS_BORDER, 10, 40, 150, 50, hWnd, (HMENU)2, NULL, NULL);
 		CreateWindowA("BUTTON", "ATACAR Jefe", WS_VISIBLE | WS_CHILD | WS_BORDER, 10, 80, 150, 50, hWnd, (HMENU)3, NULL, NULL);
 		CreateWindowA("BUTTON", "ATACAR Jefe Final", WS_VISIBLE | WS_CHILD | WS_BORDER, 10, 120, 150, 50, hWnd, (HMENU)4, NULL, NULL);
-		CreateWindowA("BUTTON", "CURARSE", WS_VISIBLE | WS_CHILD | WS_BORDER, 10, 140, 150, 50, hWnd, (HMENU)5, NULL, NULL);
 		break;
 	}
 
@@ -504,13 +529,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			int length = GetWindowTextLength(TextBox) + 1;
 			GetWindowTextA(TextBox, textReaded, length);
 			MessageBeep(MB_ICONASTERISK);
-			MessageBoxA(hWnd, textReaded, textReaded, MB_OK); 
-
+			diccionario(textReaded, hWnd);
+			SetWindowTextA(History, textReaded);
 			break;
 		}
 
 		case 2: {
-			player.fightingMinions(roomMap, player.getCurrentRoom());
+			player.fightingMinions(roomMap, player.getCurrentRoom(), hWnd);
+			
+
 			break;
 
 		}
@@ -523,10 +550,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 		case 4: {
 			player.fightingFinalBoss(roomMap, player.getCurrentRoom());
-			break;
-		}
-		case 5: {
-			player.heal();
 			break;
 		}
 
@@ -542,9 +565,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		case IDM_ABOUT:
 			DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
 			break;
+
+
 		case IDM_EXIT:
 			DestroyWindow(hWnd);
 			break;
+
+
 		default:
 			return DefWindowProc(hWnd, message, wParam, lParam);
 		}
